@@ -1,0 +1,21 @@
+.DS_Store
+
+
+# Java.ignore file
+.settings
+.project
+.classpath
+
+*.class
+*.o
+
+# cpp.ignore file
+*.exe
+
+# python.ignore file
+.pydevproject
+*.pyc%
+
+# idea
+.idea
+target
