@@ -173,6 +173,26 @@ private[ml] trait FactorizationMachinesParams extends PredictorParams with HasSt
   /** @group getParam */
   final def getBeta: (Double, Double, Double) = $(beta)
 
+  /**
+    * The saving path of the factorization machines.
+    *
+    * @group param
+    */
+  final val savePath: Param[String] = new Param[String](this, "savePath", "The saving path of the factorization machines.")
+
+  /** @group getParam */
+  final def getSavePath: String = $(savePath)
+
+  /**
+    * The control flag of the factorization machines.
+    *
+    * @group param
+    */
+  final val controlFlag: Param[Int] = new Param[Int](this, "controlFlag", "The control flag of the factorization machines.")
+
+  /** @group getParam */
+  final def getControlFlag: Int = $(controlFlag)
+
   override protected def validateAndTransformSchema(
       schema: StructType,
       fitting: Boolean,
@@ -268,6 +288,7 @@ class FactorizationMachines(override val uid: String)
     * @group setParam
     */
   def setMaxIter(value: Int): this.type = set(maxIter, value)
+
   setDefault(maxIter, 100)
 
   /**
@@ -277,6 +298,7 @@ class FactorizationMachines(override val uid: String)
     * @group setParam
     */
   def setTol(value: Double): this.type = set(tol, value)
+
   setDefault(tol, 0.001)
 
   /**
@@ -286,6 +308,7 @@ class FactorizationMachines(override val uid: String)
     * @group setParam
     */
   def setThreshold(value: Double): this.type = set(threshold, value)
+
   setDefault(threshold, 0.5)
 
   /**
@@ -313,6 +336,7 @@ class FactorizationMachines(override val uid: String)
       s"Parameter miniBatchFraction can only be set in Solver.GradientDescent.")
     set(miniBatchFraction, value)
   }
+
   setDefault(miniBatchFraction, 1.0)
 
   /**
@@ -324,6 +348,7 @@ class FactorizationMachines(override val uid: String)
   def setNumPartitions(value: Int): this.type = {
     set(numPartitions, value)
   }
+
   setDefault(numPartitions, -1)
 
   /**
@@ -337,6 +362,7 @@ class FactorizationMachines(override val uid: String)
       s"Hyper parameter alpha can only be set in Solver.ParallelFtrl.")
     set(alpha, value)
   }
+
   setDefault(alpha, (0.1, 0.1, 0.1))
 
   /**
@@ -350,7 +376,35 @@ class FactorizationMachines(override val uid: String)
       s"Hyper parameter beta can only be set in Solver.ParallelFtrl.")
     set(beta, value)
   }
+
   setDefault(beta, (1.0, 1.0, 1.0))
+
+  /**
+    * Set the value of param[[savePath]]
+    * Default is "./fm.out"
+    *
+    * @group setParam
+    */
+  def setSavePath(value: String): this.type = {
+    set(savePath, value)
+  }
+
+  setDefault(savePath, "./fm.out")
+
+  /**
+    * Set the value of param[[controlFlag]]
+    * Default is "./fm.out"
+    *
+    * @group setParam
+    */
+  def setControlFlag(value: Int): this.type = {
+    println(s"#Control Flag(Default) $CONTROL_FLAG")
+    CONTROL_FLAG = value
+    println(s"#Control Flag(Custom) $CONTROL_FLAG")
+    set(controlFlag, value)
+  }
+
+  setDefault(controlFlag, 0)
 
   private var optInitialModel: Option[FactorizationMachinesModel] = None
 
@@ -384,6 +438,7 @@ class FactorizationMachines(override val uid: String)
     val numFeatures = lpData.first().features.size
     require(numFeatures > 0)
 
+    println("# n_instances=%d, n_features=%d".format(dataset.count(), numFeatures))
     val data = lpData.map(lp => (lp.label, MLlibVectors.fromML(lp.features)))
 
     val handlePersistence = dataset.rdd.getStorageLevel == StorageLevel.NONE
@@ -417,8 +472,10 @@ class FactorizationMachines(override val uid: String)
     val (minTarget, maxTarget) = $(algo) match {
       case Algo.Regression =>
         data.map(_._1).aggregate[(Double, Double)]((Double.MaxValue, Double.MinValue))({ case ((min, max), v) =>
-        (Math.min(min, v), Math.max(max, v))}, { case ((min1, max1), (min2, max2)) =>
-        (Math.min(min1, min2), Math.max(max1, max2))})
+          (Math.min(min, v), Math.max(max, v))
+        }, { case ((min1, max1), (min2, max2)) =>
+          (Math.min(min1, min2), Math.max(max1, max2))
+        })
       case Algo.BinaryClassification => (0.0, 0.0)
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
     }
@@ -460,18 +517,19 @@ class FactorizationMachines(override val uid: String)
       data.unpersist()
     }
 
+    saveFmParameters($(savePath), newWeights, $(dim), numFeatures)
     FactorizationMachinesModel(uid, $(algo), newWeights, $(dim), $(threshold), numFeatures)
   }
 }
 
 class FactorizationMachinesModel private[ml](
-    override val uid: String,
-    val algo: Algo,
-    val weights: Vector,
-    val dim: (Int, Int, Int),
-    val threshold: Double,
-    override val numFeatures: Int)
-    extends PredictionModel[Vector, FactorizationMachinesModel] with Serializable {
+                                              override val uid: String,
+                                              val algo: Algo,
+                                              val weights: Vector,
+                                              val dim: (Int, Int, Int),
+                                              val threshold: Double,
+                                              override val numFeatures: Int)
+  extends PredictionModel[Vector, FactorizationMachinesModel] with Serializable {
 
   override protected def predict(features: Vector): Double = {
     val (p, _) = FactorizationMachinesModel.predictAndSum(
@@ -480,7 +538,11 @@ class FactorizationMachinesModel private[ml](
       case Algo.Regression => p
       case Algo.BinaryClassification =>
         val out = 1.0 / (1.0 + Math.exp(-p))
-        if (out >= threshold) { 1.0 } else { -1.0 }
+        if (out >= threshold) {
+          1.0
+        } else {
+          -1.0
+        }
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
     }
   }
@@ -493,22 +555,26 @@ class FactorizationMachinesModel private[ml](
 
 object FactorizationMachinesModel {
   def apply(
-      uid: String,
-      algo: Algo,
-      weights: Vector,
-      dim: (Int, Int, Int),
-      threshold: Double,
-      numFeatures: Int): FactorizationMachinesModel = {
+             uid: String,
+             algo: Algo,
+             weights: Vector,
+             dim: (Int, Int, Int),
+             threshold: Double,
+             numFeatures: Int): FactorizationMachinesModel = {
     new FactorizationMachinesModel(uid, algo, weights, dim, threshold, numFeatures)
   }
 
   def predictAndSum(
-      features: Vector,
-      weights: Vector,
-      dim: (Int, Int, Int),
-      numFeatures: Int): (Double, Array[Double]) = {
+                     features: Vector,
+                     weights: Vector,
+                     dim: (Int, Int, Int),
+                     numFeatures: Int): (Double, Array[Double]) = {
 
-    var result = if (dim._1 == 1) { weights(weights.size - 1) } else { 0.0 }
+    var result = if (dim._1 == 1) {
+      weights(weights.size - 1)
+    } else {
+      0.0
+    }
 
     if (dim._2 == 1) {
       val wPos = numFeatures * dim._3
@@ -533,26 +599,26 @@ object FactorizationMachinesModel {
 }
 
 class FactorizationMachinesGradient(
-    val algo: Algo,
-    val dim: (Int, Int, Int),
-    val numFeatures: Int,
-    val maxTarget: Double = 0.0,
-    val minTarget: Double = 0.0) extends Gradient {
+                                     val algo: Algo,
+                                     val dim: (Int, Int, Int),
+                                     val numFeatures: Int,
+                                     val maxTarget: Double = 0.0,
+                                     val minTarget: Double = 0.0) extends Gradient {
 
   override def compute(
-      features: MLlibVector,
-      label: Double,
-      weights: MLlibVector): (MLlibVector, Double) = {
+                        features: MLlibVector,
+                        label: Double,
+                        weights: MLlibVector): (MLlibVector, Double) = {
     val cumGradient = Vectors.dense(Array.fill(weights.size)(0.0))
     val loss = compute(features, label, weights, cumGradient)
     (cumGradient, loss)
   }
 
   override def compute(
-      features: MLlibVector,
-      label: Double,
-      weights: MLlibVector,
-      cumGradient: MLlibVector): Double = {
+                        features: MLlibVector,
+                        label: Double,
+                        weights: MLlibVector,
+                        cumGradient: MLlibVector): Double = {
 
     val (p, sum) = FactorizationMachinesModel.predictAndSum(features, weights, dim, numFeatures)
     val mult = algo match {
@@ -562,7 +628,6 @@ class FactorizationMachinesGradient(
     }
 
     val cumValues = cumGradient.toDense.values
-
     if (dim._1 == 1) {
       cumValues(cumValues.length - 1) += mult
     }
@@ -590,16 +655,16 @@ class FactorizationMachinesGradient(
 }
 
 class FactorizationMachinesUpdater(
-    dim: (Int, Int, Int),
-    regParams: (Double, Double, Double),
-    numFeatures: Int) extends Updater {
+                                    dim: (Int, Int, Int),
+                                    regParams: (Double, Double, Double),
+                                    numFeatures: Int) extends Updater {
 
   override def compute(
-      weightsOld: MLlibVector,
-      gradient: MLlibVector,
-      stepSize: Double,
-      iter: Int,
-      regParam: Double): (MLlibVector, Double) = {
+                        weightsOld: MLlibVector,
+                        gradient: MLlibVector,
+                        stepSize: Double,
+                        iter: Int,
+                        regParam: Double): (MLlibVector, Double) = {
 
     val weightsNew = weightsOld.toArray
     val size = weightsOld.size
@@ -624,8 +689,33 @@ class FactorizationMachinesUpdater(
       }
     }
 
-    val brzRegParams = BDV.vertcat(BDV.fill(numFeatures * dim._3){regParams._3},
-      BDV.fill(numFeatures){regParams._2}, BDV.fill(1){regParams._1})
+    // Ensure the updated weight is positive
+    if ((dim._1 == 1) && (weightsNew(size - 1) < 0.0) && ((CONTROL_FLAG & WEIGHT_BIAS_FLAG) > 0)) {
+      weightsNew(size - 1) = RESET_VALUE
+    }
+    if ((dim._2 == 1) && ((CONTROL_FLAG & WEIGHT_1WAY_FLAG) > 0) ) {
+      val base = numFeatures * dim._3
+      for (ix <- 0 until numFeatures) {
+        if (weightsNew(base + ix) < 0.0) { weightsNew(base + ix) = RESET_VALUE }
+      }
+    }
+    if ((dim._3 > 0) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
+      for (ix <- 0 until numFeatures * dim._3) {
+        if (weightsNew(ix) < 0.0) { weightsNew(ix) = RESET_VALUE }
+      }
+    }
+
+    val brzRegParams = (dim._1, dim._2) match {
+      case (1, 1) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParams._3},
+        BDV.fill(numFeatures){regParams._2}, BDV.fill(1){regParams._1})
+      case (1, 0) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParams._3},
+        BDV.fill(1){regParams._1})
+      case (0, 1) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParams._3},
+        BDV.fill(numFeatures){regParams._2})
+      case (0, 0) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParams._3})
+      case _ => throw new IllegalArgumentException("Invalid value of parameter 'dim'(k0, k1, k2)." +
+        "Try to set k0, k1 to 0 or 1.")
+    }
     val brzWeights: BV[Double] = MLlibVectors.dense(weightsNew).asBreeze
     val regVal = brzRegParams dot (brzWeights :* brzWeights)
 
@@ -634,21 +724,21 @@ class FactorizationMachinesUpdater(
 }
 
 class FactorizationMachinesPerCoordinateUpdater(
-    dim: (Int, Int, Int),
-    regParamsL1: (Double, Double, Double),
-    regParamsL2: (Double, Double, Double),
-    numFeatures: Int,
-    alphaBWV: (Double, Double, Double),
-    betaBWV: (Double, Double, Double)) extends PerCoordinateUpdater {
+                                                 dim: (Int, Int, Int),
+                                                 regParamsL1: (Double, Double, Double),
+                                                 regParamsL2: (Double, Double, Double),
+                                                 numFeatures: Int,
+                                                 alphaBWV: (Double, Double, Double),
+                                                 betaBWV: (Double, Double, Double)) extends PerCoordinateUpdater {
   override def compute(
-      weightsOld: MLlibVector,
-      gradient: MLlibVector,
-      alpha: Double,
-      beta: Double,
-      lambda1: Double,
-      lambda2: Double,
-      n: MLlibVector,
-      z: MLlibVector): (MLlibVector, Double, MLlibVector, MLlibVector) = {
+                        weightsOld: MLlibVector,
+                        gradient: MLlibVector,
+                        alpha: Double,
+                        beta: Double,
+                        lambda1: Double,
+                        lambda2: Double,
+                        n: MLlibVector,
+                        z: MLlibVector): (MLlibVector, Double, MLlibVector, MLlibVector) = {
 
     val (alphaBias, alphaW, alphaV) = (alphaBWV._1, alphaBWV._2, alphaBWV._3)
     val (betaBias, betaW, betaV) = (betaBWV._1, betaBWV._2, betaBWV._3)
@@ -669,14 +759,14 @@ class FactorizationMachinesPerCoordinateUpdater(
     activeIndices.foreach { index =>
       if (wRange.contains(index) && dim._2 == 1) {
         val gradW = gradient(index)
-        val sigmaW = (math.sqrt(nArray(index) + gradW * gradW)  - math.sqrt(nArray(index))) / alphaW
+        val sigmaW = (math.sqrt(nArray(index) + gradW * gradW) - math.sqrt(nArray(index))) / alphaW
         zArray(index) += gradW - sigmaW * weightsNew(index)
         nArray(index) += gradW * gradW
       }
 
       if (vRange.contains(index)) {
         val gradV = gradient(index)
-        val sigmaV = (math.sqrt(nArray(index) + gradV * gradV)  - math.sqrt(nArray(index))) / alphaV
+        val sigmaV = (math.sqrt(nArray(index) + gradV * gradV) - math.sqrt(nArray(index))) / alphaV
         zArray(index) += gradV - sigmaV * weightsNew(index)
         nArray(index) += gradV * gradV
       }
@@ -707,13 +797,50 @@ class FactorizationMachinesPerCoordinateUpdater(
           -(zArray(index) - regParamsL1._3 * math.signum(zArray(index))) /
             (regParamsL2._3 + (betaV + math.sqrt(nArray(index))) / alphaV)
         }
+        if ((weightsNew(index) < 0.0) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
+          weightsNew(index) = RESET_VALUE
+        }
       }
     }
 
-    val brzRegParamsL1 = BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL1._3},
-      BDV.fill(numFeatures){regParamsL1._2}, BDV.fill(1){regParamsL1._1})
-    val brzRegParamsL2 = BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL2._3},
-      BDV.fill(numFeatures){regParamsL2._2}, BDV.fill(1){regParamsL2._1})
+    // Ensure the updated weight is positive
+    if ((dim._1 == 1) && (weightsNew(weightsNew.length - 1) < 0.0) && ((CONTROL_FLAG & WEIGHT_BIAS_FLAG) > 0)) {
+      weightsNew(weightsNew.length - 1) = RESET_VALUE
+    }
+    if ((dim._2 == 1) && ((CONTROL_FLAG & WEIGHT_1WAY_FLAG) > 0) ) {
+      val base = numFeatures * dim._3
+      for (ix <- 0 until numFeatures) {
+        if (weightsNew(base + ix) < 0.0) { weightsNew(base + ix) = RESET_VALUE }
+      }
+    }
+    if ((dim._3 > 0) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
+      for (ix <- 0 until numFeatures * dim._3) {
+        if (weightsNew(ix) < 0.0) { weightsNew(ix) = RESET_VALUE }
+      }
+    }
+
+    val brzRegParamsL1 = (dim._1, dim._2) match {
+      case (1, 1) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL1._3},
+        BDV.fill(numFeatures){regParamsL1._2}, BDV.fill(1){regParamsL1._1})
+      case (1, 0) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL1._3},
+        BDV.fill(1){regParamsL1._1})
+      case (0, 1) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL1._3},
+        BDV.fill(numFeatures){regParamsL1._2})
+      case (0, 0) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL1._3})
+      case _ => throw new IllegalArgumentException("Invalid value of parameter 'dim'(k0, k1, k2)." +
+        "Try to set k0, k1 to 0 or 1.")
+    }
+    val brzRegParamsL2 = (dim._1, dim._2) match {
+      case (1, 1) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL2._3},
+        BDV.fill(numFeatures){regParamsL2._2}, BDV.fill(1){regParamsL2._1})
+      case (1, 0) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL2._3},
+        BDV.fill(1){regParamsL2._1})
+      case (0, 1) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL2._3},
+        BDV.fill(numFeatures){regParamsL2._2})
+      case (0, 0) => BDV.vertcat(BDV.fill(numFeatures * dim._3){regParamsL2._3})
+      case _ => throw new IllegalArgumentException("Invalid value of parameter 'dim'(k0, k1, k2)." +
+        "Try to set k0, k1 to 0 or 1.")
+    }
     val brzWeights: BV[Double] = MLlibVectors.dense(weightsNew).asBreeze
     val regVal = (brzRegParamsL1 dot abs(brzWeights)) + (brzRegParamsL2 dot (brzWeights :* brzWeights))
 
