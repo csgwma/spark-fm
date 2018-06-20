@@ -14,6 +14,7 @@ package object fm {
   final val WEIGHT_1WAY_FLAG: Int = (1 << 1)
   final val WEIGHT_2WAY_FLAG: Int = (1 << 2)
   var CONTROL_FLAG: Int = 0
+  var COST_RATIO: Double = 1.0
 
   def saveFmParameters(filePath: String, weights: Vector, dim: (Int, Int, Int), numFeatures: Int): Unit = {
     val writer = new PrintWriter(new File(filePath))

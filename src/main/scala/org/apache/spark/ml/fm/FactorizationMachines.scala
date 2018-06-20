@@ -193,6 +193,16 @@ private[ml] trait FactorizationMachinesParams extends PredictorParams with HasSt
   /** @group getParam */
   final def getControlFlag: Int = $(controlFlag)
 
+  /**
+    * The cost ratio (c- to c+) for cost sensitive learning.
+    *
+    * @group param
+    */
+  final val costRatio: Param[Double] = new Param[Double](this, "costRatio", "The cost ratio (c- to c+) for cost sensitive learning.")
+
+  /** @group getParam */
+  final def getCostRatio: Double = $(controlFlag)
+
   override protected def validateAndTransformSchema(
       schema: StructType,
       fitting: Boolean,
@@ -393,7 +403,7 @@ class FactorizationMachines(override val uid: String)
 
   /**
     * Set the value of param[[controlFlag]]
-    * Default is "./fm.out"
+    * Default is 0
     *
     * @group setParam
     */
@@ -405,6 +415,19 @@ class FactorizationMachines(override val uid: String)
   }
 
   setDefault(controlFlag, 0)
+
+  /**
+    * Set the value of param[[costRatio]]
+    * Default is 1.0
+    *
+    * @group setParam
+    */
+  def setCostRatio(value: Double): this.type = {
+    COST_RATIO = value
+    set(costRatio, value)
+  }
+
+  setDefault(costRatio, 1.0)
 
   private var optInitialModel: Option[FactorizationMachinesModel] = None
 
@@ -622,7 +645,14 @@ class FactorizationMachinesGradient(
 
     val (p, sum) = FactorizationMachinesModel.predictAndSum(features, weights, dim, numFeatures)
     val mult = algo match {
-      case Algo.Regression => Math.min(Math.max(p, minTarget), maxTarget) - label
+      // case Algo.Regression => Math.min(Math.max(p, minTarget), maxTarget) - label
+      // TODO: 这里是梯度计算，目标函数变了（其他地方也要变吧）
+      case Algo.Regression =>
+          if (p > label) {
+            Math.min(Math.max(p, minTarget), maxTarget) - label
+          }else {
+            COST_RATIO * (Math.min(Math.max(p, minTarget), maxTarget) - label)
+          }
       case Algo.BinaryClassification => label * (1.0 / (1.0 + Math.exp(-p * label)) - 1.0)
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
     }
@@ -647,7 +677,8 @@ class FactorizationMachinesGradient(
     }
 
     algo match {
-      case Algo.Regression => (p - label) * (p - label)
+      // TODO: 这里是返回Loss，应该是梯度不变，而Loss变化？梯度不变那优化方向还对吗？应该是这两个地方都改吧！
+      case Algo.Regression => if (p>label) { (p - label) * (p - label) } else { COST_RATIO * (p - label) * (p - label) }
       case Algo.BinaryClassification => -Math.log(1 + 1 / (1 + Math.exp(-p * label)))
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
     }

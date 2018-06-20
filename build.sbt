@@ -13,10 +13,10 @@ sparkComponents += "mllib"
 resolvers += Resolver.sonatypeRepo("public")
 
 //libraryDependencies += "com.typesafe" % "config" % "1.3.2"
-//libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.16"
-libraryDependencies += "com.typesafe" % "config" % "1.2.1"
+// libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.16"
+//libraryDependencies += "com.typesafe" % "config" % "1.2.1"
 
-unmanagedBase := baseDirectory.value / "custom_lib"
+//unmanagedBase := baseDirectory.value / "custom_lib"
 
 spShortDescription := "spark-fm"
 

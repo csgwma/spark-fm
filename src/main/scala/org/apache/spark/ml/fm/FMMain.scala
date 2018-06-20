@@ -46,6 +46,7 @@ object FMMain {
   val ARG_CONTROL_FLAG = "control_flag"
   val ARG_TRAIN_FILE = "train_file"
   val ARG_TEST_FILE = "test_file"
+  val ARG_COST_RATIO= "cost_ratio"
   // The types of the arguments
   val TYPE_TRIBLE_INT = Set(ARG_DIM)
   val TYPE_TRIBLE_DOUBLE = Set(ARG_L1, ARG_L2, ARG_ALPHA, ARG_BETA)
@@ -89,6 +90,7 @@ object FMMain {
       .setNumPartitions(paras(ARG_NUM_PARTITION).toInt)
       .setSavePath(paras(ARG_SAVE_PATH))
       .setControlFlag(paras(ARG_CONTROL_FLAG).toInt)
+      .setCostRatio(paras(ARG_COST_RATIO).toDouble)
 
     paras(ARG_SOLVER) match {
       case "pftrl" => trainer.setReParamsL1(str2TribleDouble(paras(ARG_L1)))
