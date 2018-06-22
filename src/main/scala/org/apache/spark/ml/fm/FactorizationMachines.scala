@@ -174,6 +174,20 @@ private[ml] trait FactorizationMachinesParams extends PredictorParams with HasSt
   final def getBeta: (Double, Double, Double) = $(beta)
 
   /**
+    * Set the number of corrections used in the LBFGS update. Default 10.
+    * Values of numCorrections less than 3 are not recommended; large values
+    * of numCorrections will result in excessive computing time.
+    * numCorrections must be positive, and values from 4 to 9 are generally recommended.
+    *
+    * @group param
+    */
+  final val numCorrections: IntParam = new IntParam(this, "numCorrections",
+    "Number of corrections to be used in the LBFGS update", (n: Int) => n > 0)
+
+  /** @group getParam */
+  final def getNumCorrections: Int = $(numCorrections)
+
+  /**
     * The saving path of the factorization machines.
     *
     * @group param
@@ -390,6 +404,20 @@ class FactorizationMachines(override val uid: String)
   setDefault(beta, (1.0, 1.0, 1.0))
 
   /**
+    * Set the value of param[[numCorrections]]
+    * Default is 10.
+    *
+    * @group setParam
+    */
+  def setNumCorrections(value: Int): this.type = {
+    require($(solver) == Solver.LBFGS,
+      s"Hyper parameter numCorrections can only be set in Solver.LBFGS.")
+    set(numCorrections, value)
+  }
+
+  setDefault(numCorrections, 10)
+
+  /**
     * Set the value of param[[savePath]]
     * Default is "./fm.out"
     *
@@ -525,6 +553,7 @@ class FactorizationMachines(override val uid: String)
         new LBFGS(gradient, updater)
           .setNumIterations($(maxIter))
           .setConvergenceTol($(tol))
+          .setNumCorrections($(numCorrections))
       case Solver.ParallelFtrl =>
         val updater = new FactorizationMachinesPerCoordinateUpdater($(dim), regL1, regL2, numFeatures, $(alpha), $(beta))
         new ParallelFtrl(gradient, updater)

@@ -21,9 +21,7 @@ import scala.io.Source
 import scala.collection.mutable.Map
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.optim.configuration.{Algo, Solver}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.DataFrame
-
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 /**
   * The entry for Factorization Machines.
   */
@@ -42,6 +40,7 @@ object FMMain {
   val ARG_MINIBATCHFRATIO = "mini_batch_fraction"
   val ARG_STEP_SIZE = "step_size"
   val ARG_NUM_PARTITION = "num_partitions"
+  val ARG_NUM_CORRECTIONS = "num_corrections"
   val ARG_SAVE_PATH = "save_path"
   val ARG_CONTROL_FLAG = "control_flag"
   val ARG_TRAIN_FILE = "train_file"
@@ -101,6 +100,7 @@ object FMMain {
       case "psgd" => trainer.setStepSize(paras(ARG_STEP_SIZE).toDouble)
           .setAggregationDepth(2)
       case "lbfgs" => trainer.setStepSize(paras(ARG_STEP_SIZE).toDouble)
+          .setNumCorrections(paras(ARG_NUM_CORRECTIONS).toInt)
       case _ => throw new IllegalArgumentException("Invalid arguments %s".format(paras(ARG_SOLVER)))
     }
     trainer
@@ -123,6 +123,7 @@ object FMMain {
       val test = spark.read.format("libsvm").load(paras(ARG_TEST_FILE))
       val result = model.transform(test)
       val predictionAndLabel = result.select("prediction", "label")
+      predictionAndLabel.write.mode(SaveMode.Overwrite).csv(paras(ARG_TEST_FILE) + ".pred")
       val evaluator = new RegressionEvaluator().setMetricName("mae")
       println("MAE: " + evaluator.evaluate(predictionAndLabel))
     }
