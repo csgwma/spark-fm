@@ -46,12 +46,6 @@ object FMMain {
   val ARG_TRAIN_FILE = "train_file"
   val ARG_TEST_FILE = "test_file"
   val ARG_COST_RATIO= "cost_ratio"
-  // The types of the arguments
-  val TYPE_TRIBLE_INT = Set(ARG_DIM)
-  val TYPE_TRIBLE_DOUBLE = Set(ARG_L1, ARG_L2, ARG_ALPHA, ARG_BETA)
-  val TYPE_DOUBLE = Set(ARG_STDEV, ARG_TOL, ARG_THRESHOLD, ARG_STEP_SIZE)
-  val TYPE_INT = Set(ARG_MAX_ITER, ARG_MINIBATCHFRATIO, ARG_NUM_PARTITION, CONTROL_FLAG)
-  val TYPE_STRING = Set(ARG_ALGO, ARG_SOLVER, ARG_SAVE_PATH, ARG_TRAIN_FILE)
 
   def getModelParameters(args: Array[String]) = {
     var paras = Map[String, String]()
