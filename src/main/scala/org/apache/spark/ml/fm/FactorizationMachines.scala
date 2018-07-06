@@ -436,9 +436,7 @@ class FactorizationMachines(override val uid: String)
     * @group setParam
     */
   def setControlFlag(value: Int): this.type = {
-    println(s"#Control Flag(Default) $CONTROL_FLAG")
     CONTROL_FLAG = value
-    println(s"#Control Flag(Custom) $CONTROL_FLAG")
     set(controlFlag, value)
   }
 
@@ -451,6 +449,8 @@ class FactorizationMachines(override val uid: String)
     * @group setParam
     */
   def setCostRatio(value: Double): this.type = {
+    require($(algo) == Algo.Regression,
+      s"Hyper parameter costRatio can only be set in Algo.Regression.")
     COST_RATIO = value
     set(costRatio, value)
   }
@@ -674,8 +674,6 @@ class FactorizationMachinesGradient(
 
     val (p, sum) = FactorizationMachinesModel.predictAndSum(features, weights, dim, numFeatures)
     val mult = algo match {
-      // case Algo.Regression => Math.min(Math.max(p, minTarget), maxTarget) - label
-      // TODO: 这里是梯度计算，目标函数变了（其他地方也要变吧）
       case Algo.Regression =>
           if (p > label) {
             Math.min(Math.max(p, minTarget), maxTarget) - label
@@ -706,7 +704,6 @@ class FactorizationMachinesGradient(
     }
 
     algo match {
-      // TODO: 这里是返回Loss，应该是梯度不变，而Loss变化？梯度不变那优化方向还对吗？应该是这两个地方都改吧！
       case Algo.Regression => if (p>label) { (p - label) * (p - label) } else { COST_RATIO * (p - label) * (p - label) }
       case Algo.BinaryClassification => -Math.log(1 + 1 / (1 + Math.exp(-p * label)))
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
