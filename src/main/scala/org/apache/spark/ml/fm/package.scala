@@ -44,8 +44,4 @@ package object fm {
     writer.close()
   }
 
-  def meetReriod(): Boolean = {
-    ((new Random).nextInt(1000000) % PERIOD_K) == 0
-  }
-
 }

@@ -118,8 +118,10 @@ object FMMain {
       val result = model.transform(test)
       val predictionAndLabel = result.select("prediction", "label")
       predictionAndLabel.write.mode(SaveMode.Overwrite).csv(paras(ARG_TEST_FILE) + ".pred")
-      val evaluator = new RegressionEvaluator().setMetricName("mae")
-      println("MAE: " + evaluator.evaluate(predictionAndLabel))
+      val evaluatorMAE = new RegressionEvaluator().setMetricName("mae")
+      val evaluatorMSE = new RegressionEvaluator().setMetricName("mse")
+      println("MAE: " + evaluatorMAE.evaluate(predictionAndLabel))
+      println("MSE: " + evaluatorMSE.evaluate(predictionAndLabel))
     }
     spark.stop()
   }
