@@ -22,6 +22,7 @@ import scala.collection.mutable.Map
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.optim.configuration.{Algo, Solver}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 /**
   * The entry for Factorization Machines.
   */
@@ -45,13 +46,31 @@ object FMMain {
   val ARG_CONTROL_FLAG = "control_flag"
   val ARG_TRAIN_FILE = "train_file"
   val ARG_TEST_FILE = "test_file"
-  val ARG_COST_RATIO= "cost_ratio"
+  val ARG_COST_RATIO = "cost_ratio"
 
   def getModelParameters(args: Array[String]) = {
-    var paras = Map[String, String]()
+    var paras = Map[String, String]((ARG_ALGO -> "regression"),
+      (ARG_SOLVER -> "sgd"),
+      (ARG_DIM -> "1,1,8"),
+      (ARG_L1 -> "0.1,0.1,0.1"),
+      (ARG_L2 -> "0.005,0.005,0.005"),
+      (ARG_STDEV -> "0.1"),
+      (ARG_ALPHA -> "0.1, 0.1, 0.1"),
+      (ARG_BETA -> "1.0, 1.0, 1.0"),
+      (ARG_TOL -> "0.001"),
+      (ARG_MAX_ITER -> "100"),
+      (ARG_THRESHOLD -> "0.5"),
+      (ARG_MINIBATCHFRATIO -> "1.0"),
+      (ARG_STEP_SIZE -> "1.0"),
+      (ARG_NUM_PARTITION -> "4"),
+      (ARG_NUM_CORRECTIONS -> "10"),
+      (ARG_SAVE_PATH -> "data/fm.out"),
+      (ARG_CONTROL_FLAG -> "7"),
+      (ARG_TRAIN_FILE -> "data/small.train")
+    )
     for (path <- args) {
       val file = Source.fromFile(path)
-      for (line <- file.getLines; if (!line.startsWith("#"))) {
+      for (line <- file.getLines; if (!line.startsWith("#") && !line.trim.isEmpty)) {
         val tokens = line.split("=")
         val (key, value) = (tokens(0).trim, tokens(1).trim)
         paras += (key -> value)
@@ -75,10 +94,10 @@ object FMMain {
     val trainer = new FactorizationMachines().setAlgo(Algo.fromString(paras(ARG_ALGO)))
       .setSolver(Solver.fromString(paras(ARG_SOLVER)))
       .setDim(str2TribleInt(paras(ARG_DIM)))
-      .setRegParamsL2(str2TribleDouble(paras(ARG_L2)))
       .setInitStdev(paras(ARG_STDEV).toDouble)
-      .setTol(paras(ARG_TOL).toDouble)
+      .setRegParamsL2(str2TribleDouble(paras(ARG_L2)))
       .setMaxIter(paras(ARG_MAX_ITER).toInt)
+      .setTol(paras(ARG_TOL).toDouble)
       .setThreshold(paras(ARG_THRESHOLD).toDouble)
       .setNumPartitions(paras(ARG_NUM_PARTITION).toInt)
       .setSavePath(paras(ARG_SAVE_PATH))
@@ -92,9 +111,9 @@ object FMMain {
       case "sgd" => trainer.setStepSize(paras(ARG_STEP_SIZE).toDouble)
         .setMiniBatchFraction(paras(ARG_MINIBATCHFRATIO).toDouble)
       case "psgd" => trainer.setStepSize(paras(ARG_STEP_SIZE).toDouble)
-          .setAggregationDepth(2)
+        .setAggregationDepth(2)
       case "lbfgs" => trainer.setStepSize(paras(ARG_STEP_SIZE).toDouble)
-          .setNumCorrections(paras(ARG_NUM_CORRECTIONS).toInt)
+        .setNumCorrections(paras(ARG_NUM_CORRECTIONS).toInt)
       case _ => throw new IllegalArgumentException("Invalid arguments %s".format(paras(ARG_SOLVER)))
     }
     trainer
@@ -113,7 +132,7 @@ object FMMain {
 
     val train = spark.read.format("libsvm").load(paras(ARG_TRAIN_FILE))
     val model = trainer.fit(train)
-    if (paras.contains(ARG_TEST_FILE) && paras(ARG_TEST_FILE) != "") {
+    if (paras.contains(ARG_TEST_FILE) && !paras(ARG_TEST_FILE).trim.isEmpty) {
       val test = spark.read.format("libsvm").load(paras(ARG_TEST_FILE))
       val result = model.transform(test)
       val predictionAndLabel = result.select("prediction", "label")

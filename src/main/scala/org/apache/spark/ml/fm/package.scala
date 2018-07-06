@@ -5,8 +5,6 @@ import java.io.{File, PrintWriter}
 import org.apache.spark
 import org.apache.spark.mllib.linalg.Vector
 
-import scala.util.Random
-
 package object fm {
   final val RESET_VALUE: Double  = 0.00000001
   final val PERIOD_K: Int  = 5
