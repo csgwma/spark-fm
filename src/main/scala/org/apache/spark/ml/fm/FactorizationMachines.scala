@@ -17,7 +17,7 @@
 
 package org.apache.spark.ml.fm
 
-import breeze.linalg.{DenseVector => BDV, Vector => BV, axpy => brzAxpy}
+import breeze.linalg.{*, DenseVector => BDV, Vector => BV, axpy => brzAxpy}
 import breeze.numerics.abs
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.optim.configuration.Algo.Algo
@@ -681,10 +681,10 @@ class FactorizationMachinesGradient(
             COST_RATIO * (Math.min(Math.max(p, minTarget), maxTarget) - label)
           }
       case Algo.BinaryClassification =>
-         if (p * label > 0) {
-            label * (1.0 / (1.0 + Math.exp(-p * label)) - 1.0)
+         if (label > 0 && p < 0) {
+           COST_RATIO * label * (1.0 / (1.0 + Math.exp(-p * label)) - 1.0)
           }  else {
-            COST_RATIO * label * (1.0 / (1.0 + Math.exp(-p * label)) - 1.0)
+           label * (1.0 / (1.0 + Math.exp(-p * label)) - 1.0)
           }
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
     }
@@ -711,10 +711,10 @@ class FactorizationMachinesGradient(
     algo match {
       case Algo.Regression => if (p>label) { (p - label) * (p - label) } else { COST_RATIO * (p - label) * (p - label) }
       case Algo.BinaryClassification =>
-          if (p * label > 0) {
-              -Math.log(1 + 1 / (1 + Math.exp(-p * label)))
+          if (label > 0 && p < 0) {
+            -COST_RATIO * Math.log(1 + 1 / (1 + Math.exp(-p * label)))
           } else {
-              -COST_RATIO * Math.log(1 + 1 / (1 + Math.exp(-p * label)))
+            -Math.log(1 + 1 / (1 + Math.exp(-p * label)))
           }
       case _ => throw new IllegalArgumentException(s"Factorization machines do not support $algo now")
     }
