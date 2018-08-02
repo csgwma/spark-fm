@@ -66,7 +66,8 @@ object FMMain {
       (ARG_NUM_CORRECTIONS -> "10"),
       (ARG_SAVE_PATH -> "data/fm.out"),
       (ARG_CONTROL_FLAG -> "7"),
-      (ARG_TRAIN_FILE -> "data/small.train")
+      (ARG_TRAIN_FILE -> "data/small.train"),
+      (ARG_COST_RATIO -> "1.0")
     )
     for (path <- args) {
       val file = Source.fromFile(path)
