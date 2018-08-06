@@ -207,6 +207,16 @@ private[ml] trait FactorizationMachinesParams extends PredictorParams with HasSt
   /** @group getParam */
   final def getControlFlag: Int = $(controlFlag)
 
+  final val weightThreshold: Param[Double] = new Param[Double](this, "weightThreshold", "The threshold of the weight of FM.")
+
+  /** @group getParam */
+  final def getWeightThreshold: Double = $(weightThreshold)
+
+  final val weightMinimum: Param[Double] = new Param[Double](this, "weightMinimum", "The minimum of the weight of FM.")
+
+  /** @group getParam */
+  final def getWeightMinimum: Double = $(weightMinimum)
+
   /**
     * The cost ratio (c- to c+) for cost sensitive learning.
     *
@@ -215,7 +225,17 @@ private[ml] trait FactorizationMachinesParams extends PredictorParams with HasSt
   final val costRatio: Param[Double] = new Param[Double](this, "costRatio", "The cost ratio (c- to c+) for cost sensitive learning.")
 
   /** @group getParam */
-  final def getCostRatio: Double = $(controlFlag)
+  final def getCostRatio: Double = $(costRatio)
+
+  /**
+    * The random seed for Random.
+    *
+    * @group param
+    */
+  final val randomSeed: Param[Long] = new Param[Long](this, "randomSeed", "The random seed for Random.")
+
+  /** @group getParam */
+  final def getRandomSeed: Double = $(randomSeed)
 
   override protected def validateAndTransformSchema(
       schema: StructType,
@@ -443,6 +463,32 @@ class FactorizationMachines(override val uid: String)
   setDefault(controlFlag, 0)
 
   /**
+    * Set the value of param[[weightThreshold]]
+    * Default is 0.0
+    *
+    * @group setParam
+    */
+  def setWeightThreshold(value: Double): this.type = {
+    WEIGHT_THRESHOLD = value
+    set(weightThreshold, value)
+  }
+
+  setDefault(weightThreshold, 0.0)
+
+  /**
+    * Set the value of param[[weightMinimum]]
+    * Default is 1e-6
+    *
+    * @group setParam
+    */
+  def setWeightMinimum(value: Double): this.type = {
+    WEIGHT_MINIMUM = value
+    set(weightMinimum, value)
+  }
+
+  setDefault(weightMinimum, 0.000001)
+
+  /**
     * Set the value of param[[costRatio]]
     * Default is 1.0
     *
@@ -456,6 +502,19 @@ class FactorizationMachines(override val uid: String)
   }
 
   setDefault(costRatio, 1.0)
+
+  /**
+    * Set the value of param[[randomSeed]]
+    * Default is 42
+    *
+    * @group setParam
+    */
+  def setRandomSeed(value: Long): this.type = {
+    Random.setSeed(value)
+    set(randomSeed, value)
+  }
+
+  setDefault(randomSeed, 42L)
 
   private var optInitialModel: Option[FactorizationMachinesModel] = None
 
@@ -757,18 +816,18 @@ class FactorizationMachinesUpdater(
     }
 
     // Ensure the updated weight is positive
-    if ((dim._1 == 1) && (weightsNew(size - 1) < 0.0) && ((CONTROL_FLAG & WEIGHT_BIAS_FLAG) > 0)) {
-      weightsNew(size - 1) = RESET_VALUE
+    if ((dim._1 == 1) && (weightsNew(size - 1) < WEIGHT_THRESHOLD) && ((CONTROL_FLAG & WEIGHT_BIAS_FLAG) > 0)) {
+      weightsNew(size - 1) = WEIGHT_MINIMUM
     }
     if ((dim._2 == 1) && ((CONTROL_FLAG & WEIGHT_1WAY_FLAG) > 0) ) {
       val base = numFeatures * dim._3
       for (ix <- 0 until numFeatures) {
-        if (weightsNew(base + ix) < 0.0) { weightsNew(base + ix) = RESET_VALUE }
+        if (weightsNew(base + ix) < WEIGHT_THRESHOLD) { weightsNew(base + ix) = WEIGHT_MINIMUM }
       }
     }
     if ((dim._3 > 0) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
       for (ix <- 0 until numFeatures * dim._3) {
-        if (weightsNew(ix) < 0.0) { weightsNew(ix) = RESET_VALUE }
+        if (weightsNew(ix) < WEIGHT_THRESHOLD) { weightsNew(ix) = WEIGHT_MINIMUM }
       }
     }
 
@@ -864,25 +923,25 @@ class FactorizationMachinesPerCoordinateUpdater(
           -(zArray(index) - regParamsL1._3 * math.signum(zArray(index))) /
             (regParamsL2._3 + (betaV + math.sqrt(nArray(index))) / alphaV)
         }
-        if ((weightsNew(index) < 0.0) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
-          weightsNew(index) = RESET_VALUE
+        if ((weightsNew(index) < WEIGHT_THRESHOLD) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
+          weightsNew(index) = WEIGHT_MINIMUM
         }
       }
     }
 
     // Ensure the updated weight is positive
     if ((dim._1 == 1) && (weightsNew(weightsNew.length - 1) < 0.0) && ((CONTROL_FLAG & WEIGHT_BIAS_FLAG) > 0)) {
-      weightsNew(weightsNew.length - 1) = RESET_VALUE
+      weightsNew(weightsNew.length - 1) = WEIGHT_MINIMUM
     }
     if ((dim._2 == 1) && ((CONTROL_FLAG & WEIGHT_1WAY_FLAG) > 0) ) {
       val base = numFeatures * dim._3
       for (ix <- 0 until numFeatures) {
-        if (weightsNew(base + ix) < 0.0) { weightsNew(base + ix) = RESET_VALUE }
+        if (weightsNew(base + ix) < WEIGHT_THRESHOLD) { weightsNew(base + ix) = WEIGHT_MINIMUM }
       }
     }
     if ((dim._3 > 0) && ((CONTROL_FLAG & WEIGHT_2WAY_FLAG) > 0)) {
       for (ix <- 0 until numFeatures * dim._3) {
-        if (weightsNew(ix) < 0.0) { weightsNew(ix) = RESET_VALUE }
+        if (weightsNew(ix) < WEIGHT_THRESHOLD) { weightsNew(ix) = WEIGHT_MINIMUM }
       }
     }
 

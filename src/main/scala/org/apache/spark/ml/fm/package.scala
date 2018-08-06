@@ -6,12 +6,13 @@ import org.apache.spark
 import org.apache.spark.mllib.linalg.Vector
 
 package object fm {
-  final val RESET_VALUE: Double  = 0.00000001
   final val PERIOD_K: Int  = 5
   final val WEIGHT_BIAS_FLAG: Int = (1 << 0)
   final val WEIGHT_1WAY_FLAG: Int = (1 << 1)
   final val WEIGHT_2WAY_FLAG: Int = (1 << 2)
   var CONTROL_FLAG: Int = 0
+  var WEIGHT_THRESHOLD: Double = 0.0
+  var WEIGHT_MINIMUM: Double  = 0.000001
   var COST_RATIO: Double = 1.0
 
   def saveFmParameters(filePath: String, weights: Vector, dim: (Int, Int, Int), numFeatures: Int): Unit = {
