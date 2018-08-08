@@ -47,6 +47,9 @@ object FMMain {
   val ARG_TRAIN_FILE = "train_file"
   val ARG_TEST_FILE = "test_file"
   val ARG_COST_RATIO = "cost_ratio"
+  val ARG_WEIGHT_MINIMUM = "weight_minimum"
+  val ARG_WEIGHT_THRESHOLD = "weight_threshold"
+  val ARG_RANDOM_SEED = "random_seed"
 
   def getModelParameters(args: Array[String]) = {
     var paras = Map[String, String]((ARG_ALGO -> "regression"),
@@ -67,7 +70,10 @@ object FMMain {
       (ARG_SAVE_PATH -> "data/fm.out"),
       (ARG_CONTROL_FLAG -> "7"),
       (ARG_TRAIN_FILE -> "data/small.train"),
-      (ARG_COST_RATIO -> "1.0")
+      (ARG_COST_RATIO -> "1.0"),
+      (ARG_WEIGHT_MINIMUM -> "0.000001"),
+      (ARG_WEIGHT_THRESHOLD -> "0.0"),
+      (ARG_RANDOM_SEED -> "42")
     )
     for (path <- args) {
       val file = Source.fromFile(path)
@@ -104,6 +110,9 @@ object FMMain {
       .setSavePath(paras(ARG_SAVE_PATH))
       .setControlFlag(paras(ARG_CONTROL_FLAG).toInt)
       .setCostRatio(paras(ARG_COST_RATIO).toDouble)
+      .setWeightThreshold(paras(ARG_WEIGHT_THRESHOLD).toDouble)
+      .setWeightMinimum(paras(ARG_WEIGHT_MINIMUM).toDouble)
+      .setRandomSeed(paras(ARG_RANDOM_SEED).toLong)
 
     paras(ARG_SOLVER) match {
       case "pftrl" => trainer.setReParamsL1(str2TribleDouble(paras(ARG_L1)))
