@@ -8,6 +8,10 @@ In order to meet users' demands, Spark-FM supports various of optimization metho
  + Parallel Stochastic Gradient Descent ([spark-optim](https://github.com/hibayesian/spark-optim))
  + Parallel Ftrl ([spark-optim](https://github.com/hibayesian/spark-optim))
 
+What's more, Spark-FM supports various of learning methods as follows.
++ **Learning Without Bias or 1st-Order Parameters**
++ **Non-negative Parameters Learning Methods**
++ **Cost Sensitive Learning Methods**
 
 # Examples
 ## Scala API
@@ -43,6 +47,11 @@ val predictionAndLabel = result.select("prediction", "label")
 val evaluator = new MulticlassClassificationEvaluator().setMetricName("accuracy")
 println("Accuracy: " + evaluator.evaluate(predictionAndLabel))
 spark.stop()
+```
+
+## Spark Submit
+```scala
+spark-submit --class "org.apache.spark.ml.fm.FMMain" target/scala-2.11/spark-fm_2.11-1.0.jar data/fm.conf
 ```
 
 # Requirements
