@@ -68,3 +68,4 @@ Spark-FM is available under Apache Licenses 2.0.
 # Contact & Feedback
 If you encounter bugs, feel free to submit an issue or pull request. Also you can mail to:
 + hibayesian (hibayesian@gmail.com).
++ csgwma (csgwma@gmail.com).
